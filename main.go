@@ -6,11 +6,11 @@ import (
 )
 
 func main() {
-	homedir := os.Getenv("KFT_KBHOME")
-	keybase := os.Getenv("KFT_KBLOC")
-	dbloc := os.Getenv("KFT_DBLOC")
-	errConvID := os.Getenv("KFT_DBGCONV")
-	users, err := NewAuthorizedUsers(os.Getenv("KFT_USERS"))
+	homedir := os.Getenv("KST_KBHOME")
+	keybase := os.Getenv("KST_KBLOC")
+	dbloc := os.Getenv("KST_DBLOC")
+	errConvID := os.Getenv("KST_DBGCONV")
+	users, err := NewAuthorizedUsers(os.Getenv("KST_USERS"))
 	if err != nil {
 		panic(err)
 	}
