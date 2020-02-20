@@ -10,21 +10,22 @@ import (
 	"github.com/keybase/go-keybase-chat-bot/kbchat/types/chat1"
 )
 
-//MONEY is the RegEx string for a space followed by currency decimal followed by either a
-//space or a newline.
-const MONEY = `\s\d*\.?\d{2}\s|\n`
+//MONEY is the RegEx string for a space followed by currency decimal followed by another space.
+const MONEY = `\s\d*\.?\d{2}\s`
 
-//WORD is the Regex string for unicode 'word' chars
-const WORD = `\w`
+//WORD is a space followed by a word
+const WORD = `\s\w+`
+
+const SPACE = `\s`
 
 type command struct {
-	name       string
-	pattern    *regexp.Regexp
-	entryPoint func(cmd []string, msg chat1.MsgSummary) error
+	Name       string
+	Pattern    *regexp.Regexp
+	EntryPoint func(cmd []string, msg chat1.MsgSummary) error
 }
 
 func (c *command) PatternMatches(cmd string) bool {
-	return c.pattern.MatchString(cmd)
+	return c.Pattern.MatchString(cmd)
 }
 
 type cmdMap map[string]command
@@ -33,16 +34,16 @@ var cmds cmdMap
 
 func (m cmdMap) add(entryPoint func(cmd []string, msg chat1.MsgSummary) error, pattern ...string) {
 	cmd := new(command)
-	cmd.name = pattern[0]
-	cmd.entryPoint = entryPoint
-	expr := fmt.Sprint(`(?is)^`, cmd.name, strings.Join(pattern, ""), `(:?\s|$)`)
-	cmd.pattern = regexp.MustCompile(expr)
-	m[cmd.name] = *cmd
+	cmd.Name = pattern[0]
+	cmd.EntryPoint = entryPoint
+	expr := `(?is)^` + strings.Join(pattern, "") + `(:?\s|$)`
+	cmd.Pattern = regexp.MustCompile(expr)
+	m[cmd.Name] = *cmd
 }
 
 func commandExists(cmdName string) *command {
 	cmd := cmds[cmdName]
-	if len(cmd.name) > 0 {
+	if len(cmd.Name) > 0 {
 		return &cmd
 	}
 	return nil
@@ -56,12 +57,12 @@ type Handler struct {
 
 func (h *Handler) buildCommandMap() *cmdMap {
 	cmds = make(cmdMap)
-	cmds.add(h.HandleStart, "start", MONEY)
+	cmds.add(h.HandleStart, "start", MONEY, "?")
 	cmds.add(h.HandleSpent, "spent", MONEY, "on", WORD)
 	cmds.add(h.HandleReceived, "received", MONEY, "from", WORD)
 	cmds.add(h.HandleBalance, "balance")
 	cmds.add(h.HandleListTags, "list", WORD)
-	cmds.add(h.HandleHowMuch, "howmuch", "on|from", WORD)
+	cmds.add(h.HandleHowMuch, "howmuch", SPACE, "on|from", WORD)
 	return &cmds
 }
 
@@ -160,7 +161,6 @@ func (h *Handler) HandleBalance(cmd []string, msg chat1.MsgSummary) error {
 	if err != nil {
 		return err
 	}
-	h.ReactSuccess(msg)
 	h.ChatEcho(msg.ConvID, fmt.Sprintf("current balance is **%s**", bal))
 	return nil
 }
@@ -239,10 +239,11 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 		// check if required data was given
 		if cmd.PatternMatches(cmdstring) {
 			//execute command
-			return cmd.entryPoint(parts, msg)
+			return cmd.EntryPoint(parts, msg)
 		}
 		//command pattern did not match
 		h.ReactQuestion(msg)
+		h.Debug("cmd %v pattern did not match: %s", name, cmd.Pattern)
 		return nil
 	}
 	return nil

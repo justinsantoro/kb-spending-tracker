@@ -6,6 +6,7 @@ import (
 	"github.com/keybase/go-keybase-chat-bot/kbchat"
 	"github.com/keybase/go-keybase-chat-bot/kbchat/types/chat1"
 	"golang.org/x/sync/errgroup"
+	"os"
 	"sync"
 )
 
@@ -79,13 +80,16 @@ func (s *Server) listenForMsgs(shutdownCh chan struct{}, sub *kbchat.NewSubscrip
 			s.Debug("listenForMsgs: Read() error: %s", err)
 			continue
 		}
-
-		if !s.IsUser(m.Message.Sender.Username) {
-			s.Debug("Ignoring message from", m.Message.Sender.Username)
+		usr := m.Message.Sender.Username
+		if !s.IsUser(usr) {
+			if usr != os.Getenv("KEYBASE_USERNAME") {
+				s.Debug("Ignoring message from %s", usr)
+			}
+			continue
 		}
 
 		msg := m.Message
-
+		s.Debug("convid = %v", m.Conversation.Id)
 		if err := handler.HandleCommand(msg); err != nil {
 			s.ChatDebug(msg.ConvID, "listenForMsgs: unable to HandleCommand: %v", err)
 		}
@@ -108,7 +112,7 @@ func (s *Server) listenForConvs(shutdownCh chan struct{}, sub *kbchat.NewSubscri
 		}
 
 		if !s.IsUser(c.Conversation.CreatorInfo.Username) {
-			s.Debug("Ignored new conversation created by", c.Conversation.CreatorInfo.Username)
+			s.Debug("Ignored new conversation created by %s", c.Conversation.CreatorInfo.Username)
 			return nil
 		}
 

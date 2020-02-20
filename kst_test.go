@@ -121,6 +121,27 @@ func TestDb(t *testing.T) {
 	}
 }
 
+func TestAuthorizedUsers(t *testing.T) {
+	usr1 := "username1"
+	usr2 := "username2"
+	userstr := usr1 + "," + usr2
+
+	auth, err := NewAuthorizedUsers(userstr)
+	if err != nil {
+		t.Error("error creating Autorized users:", err)
+	}
+	s := new(Server)
+	s.SetUsers(auth)
+	if !s.IsUser(usr1) {
+		t.Error("User Auth error: " + usr1 + "not authorized")
+	}
+	if !s.IsUser(usr2) {
+		t.Error("User Auth error: " + usr2 + "not authorized")
+	}
+	fmt.Print(auth)
+
+}
+
 
 
 func TestMain(m *testing.M) {

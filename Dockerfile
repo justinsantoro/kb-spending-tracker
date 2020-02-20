@@ -18,6 +18,6 @@ CMD ["/home/keybase/kb-spending-tracker"]
  #     -e KEYBASE_PAPERKEY="paper key" \
  #     -e KST_USERS="username1,username2" \
  #     -e KST_DBGCONV="1234567" \
- #     -e KST_DBGCONV="1234567" \
  #     -e KST_DBLOC="/Location/Of/database.db" \
- #     yournewimage
+ #     -e TZ=America/New_York \
+ #     justinsantoro/kst:latest

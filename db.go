@@ -1,3 +1,5 @@
+// +build !nodb
+
 package main
 
 import (
