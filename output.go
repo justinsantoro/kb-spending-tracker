@@ -7,15 +7,15 @@ import (
 )
 
 type Output struct {
-	name   string
+	name          string
 	KBC           *kbchat.API
 	ErrReportConv string
 }
 
 func NewDebugOutput(name string, kbc *kbchat.API, errConv string) *Output {
 	return &Output{
-		name:   name,
-		KBC: kbc,
+		name:          name,
+		KBC:           kbc,
 		ErrReportConv: errConv,
 	}
 }
@@ -60,6 +60,7 @@ func (d *Output) ChatEcho(convID chat1.ConvIDStr, msg string, args ...interface{
 		d.Debug("ChatEcho: failed to send echo message", err)
 	}
 }
+
 //Notify broadcasts the given message
 func (d *Output) Notify(args ...interface{}) {
 	if _, err := d.KBC.Broadcast(fmt.Sprint(args...)); err != nil {

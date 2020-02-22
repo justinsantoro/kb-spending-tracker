@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 func TestDb(t *testing.T) {
 	db := DB("test.db")
 
@@ -24,22 +23,22 @@ func TestDb(t *testing.T) {
 
 	txn := Txn{
 		TimestampNow(),
-		-10*100,
+		-10 * 100,
 		[]string{"nugget", "cat-food", "cat-toys"},
 		"Catfood and nip",
 		"Sarah",
 		false,
 	}
 	AmntTotal := USD(0)
-	var FirstTs Timestamp
+	var FirstTs time.Time
 	for i := 1; i < 6; i++ {
 		txn.User = "Sarah"
-		if i % 2 == 0 {
+		if i%2 == 0 {
 			txn.User = "Justin"
 		}
 		txn.Date = TimestampNow()
 		if i == 1 {
-			FirstTs = txn.Date
+			FirstTs = txn.Date.Time()
 		}
 		txn.Amount = txn.Amount.Times(float64(i))
 		AmntTotal += txn.Amount
@@ -56,7 +55,7 @@ func TestDb(t *testing.T) {
 		t.Errorf("incorrect balance. expected %s, got %s", AmntTotal, bal)
 	}
 
-	txs, err := db.GetTransactions(FirstTs, TimestampNow())
+	txs, err := db.GetTransactions(FirstTs, time.Now())
 	if err != nil {
 		t.Error(err)
 	}
@@ -64,7 +63,7 @@ func TestDb(t *testing.T) {
 		t.Error("not enough txs from GetTransactions: Expected 5 got", l)
 	}
 
-	txs, err = db.GetTransactionsSince(txs[1].Date)
+	txs, err = db.GetTransactionsSince(txs[1].Date.Time())
 	if err != nil {
 		t.Error(err)
 	}
@@ -81,7 +80,7 @@ func TestDb(t *testing.T) {
 		t.Error("not correct amount of tags returned. Expected 3 got", l)
 	}
 
-	tb, err := db.GetTagBalance("nugget", FirstTs, TimestampNow())
+	tb, err := db.GetTagBalance("nugget", FirstTs, time.Now())
 	if err != nil {
 		t.Error(err)
 	}
@@ -92,14 +91,14 @@ func TestDb(t *testing.T) {
 	fmt.Println(tb)
 
 	//test Balancer
-	ts := TimestampNow()
+	ts := time.Now()
 	shutdownCh := make(chan struct{})
 	heartbeat := make(chan struct{})
 	handler := NewHandler(nil, &db, "1234")
 	s := new(Server)
 	s.Output = NewDebugOutput("test", nil, "")
 	var eg errgroup.Group
-	eg.Go(func() error { return s.waitToBalance(shutdownCh, handler, Timestamp{ts.Add(2 * time.Second)}, heartbeat)})
+	eg.Go(func() error { return s.waitToBalance(shutdownCh, handler, ts.Add(2*time.Second), heartbeat) })
 
 	select {
 	case <-heartbeat:
@@ -141,8 +140,6 @@ func TestAuthorizedUsers(t *testing.T) {
 	fmt.Print(auth)
 
 }
-
-
 
 func TestMain(m *testing.M) {
 	x := m.Run()

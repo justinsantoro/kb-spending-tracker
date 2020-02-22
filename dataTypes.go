@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 )
 
 func toJsonString(x interface{}) (string, error) {
@@ -55,6 +54,7 @@ func (m USD) String() string {
 	return fmt.Sprintf("$%.2f", m.InDollars())
 }
 
+//Abs returns the absolute value of the USD
 func (m USD) Abs() USD {
 	x := int64(m)
 	if x < 0 {
@@ -78,48 +78,6 @@ func (m *USD) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-//Timestamp is the local time
-type Timestamp struct {
-	time.Time
-}
-
-//NewTimestamp wraps the given Time in a Timestamp type
-func NewTimestamp(t time.Time) Timestamp {
-	return Timestamp{t}
-}
-
-//TimestampNow returns a timestamp of the current time
-func TimestampNow() Timestamp {
-	return Timestamp{time.Now()}
-}
-
-//UnMarshallJson implements the json.Unmarshaler interface
-//the time is formatted as nanoseconds since the epoch
-func (t *Timestamp) UnmarshalJSON(b []byte) error {
-	var i int64
-	if err := json.Unmarshal(b, &i); err != nil {
-		return err
-	}
-	*t = Timestamp{time.Unix(0, i)}
-	return nil
-}
-
-//MarshallJson implements the json.Marshaler interface
-//Converts nanoseconds since epoch into Time
-func (t *Timestamp) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.UnixNano())
-}
-
-//String returns the default string representation of the timestamp
-//which is the 3 letter day, then 3 letter month then the day of of the month
-func (t *Timestamp) String() string {
-	return t.Format("Mon Jan 2")
-}
-
-func (t *Timestamp) Json() (string, error) {
-	return toJsonString(t)
-}
-
 //Txn represents a single transaction
 type Txn struct {
 	Date    Timestamp //the unix timestamp of the transaction
@@ -133,12 +91,14 @@ type Txn struct {
 
 //String returns the default string representation of a Txn
 func (t *Txn) String() string {
-	return fmt.Sprintf("%s %s %s on %s", t.User, t.Action(), t.Amount.Abs(), t.Tags[0],)
+	return fmt.Sprintf("%s %s %s on %s", t.User, t.Action(), t.Amount.Abs(), t.Tags[0])
 }
 
 //Returns spent or received depending on whether the txn amnt is positive or negative
-func(t *Txn) Action() string {
-	if t.Amount < 0 { return "spent"}
+func (t *Txn) Action() string {
+	if t.Amount < 0 {
+		return "spent"
+	}
 	return "received"
 }
 
@@ -148,14 +108,16 @@ func (t *Txn) Json() (string, error) {
 }
 
 func ActionString(amt USD) string {
-	if amt < 0 {return fmt.Sprintf("spent %s on", amt.Abs())}
+	if amt < 0 {
+		return fmt.Sprintf("spent %s on", amt.Abs())
+	}
 	return fmt.Sprintf("received %s from", amt.Abs())
 }
 
 type TagBalance struct {
-	usrs map[string]USD
+	usrs  map[string]USD
 	total USD
-	tag string
+	tag   string
 }
 
 func NewTagBalance(tag string) *TagBalance {

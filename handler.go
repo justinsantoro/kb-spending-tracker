@@ -69,7 +69,7 @@ func (h *Handler) buildCommandMap() *cmdMap {
 func NewHandler(kbc *kbchat.API, db *DB, ErrConvID string) Handler {
 	h := Handler{
 		Output: NewDebugOutput("handler", kbc, ErrConvID),
-		db: db,
+		db:     db,
 	}
 	h.cmds = h.buildCommandMap()
 	return h
@@ -166,7 +166,7 @@ func (h *Handler) HandleBalance(cmd []string, msg chat1.MsgSummary) error {
 }
 
 func (h *Handler) HandleListTags(cmd []string, msg chat1.MsgSummary) error {
-	if cmd[1] == "tags"{
+	if cmd[1] == "tags" {
 		tags, err := h.db.GetTags()
 		if err != nil {
 			return err
@@ -182,7 +182,7 @@ func (h *Handler) HandleListTags(cmd []string, msg chat1.MsgSummary) error {
 }
 
 func (h *Handler) HandleHowMuch(cmd []string, msg chat1.MsgSummary) error {
-	var m *[2]Timestamp
+	var m *[2]time.Time
 	m = CurrentMonthRange()
 	if len(cmd) > 4 {
 		var ok bool

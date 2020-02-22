@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"os"
 	"sync"
+	"time"
 )
 
 type CmdHandler interface {
@@ -21,7 +22,7 @@ type Server struct {
 	sync.Mutex
 	shutdownCh chan struct{}
 	kbc        *kbchat.API
-	Users AuthorizedUsers
+	Users      AuthorizedUsers
 }
 
 func (s *Server) SetUsers(users AuthorizedUsers) {
@@ -57,7 +58,7 @@ func (s *Server) Listen(handler Handler) error {
 	var eg errgroup.Group
 	eg.Go(func() error { return s.listenForMsgs(shutdownCh, sub, handler) })
 	eg.Go(func() error { return s.listenForConvs(shutdownCh, sub, handler) })
-	eg.Go(func() error { return s.waitToBalance(shutdownCh, handler, EndOfMonth(), nil)})
+	eg.Go(func() error { return s.waitToBalance(shutdownCh, handler, EndOfMonth(), nil) })
 	if err := eg.Wait(); err != nil {
 		s.Debug("wait error: %s", err)
 		return err
@@ -122,7 +123,7 @@ func (s *Server) listenForConvs(shutdownCh chan struct{}, sub *kbchat.NewSubscri
 	}
 }
 
-func (s *Server) waitToBalance(shutdownCh chan struct{}, handler Handler, startTrigger Timestamp, heartbeat chan struct{}) error {
+func (s *Server) waitToBalance(shutdownCh chan struct{}, handler Handler, startTrigger time.Time, heartbeat chan struct{}) error {
 	triggerTime := startTrigger
 	for {
 		select {
@@ -131,16 +132,15 @@ func (s *Server) waitToBalance(shutdownCh chan struct{}, handler Handler, startT
 			return nil
 		default:
 		}
-		if TimestampNow().After(triggerTime.Time) {
+		if time.Now().After(triggerTime) {
 			err := handler.HandleMonthSummary(triggerTime.Month())
 			if err != nil {
 				return errors.New(fmt.Sprint("error handling month summary:", err))
 			}
 			triggerTime = EndOfMonth()
 			if heartbeat != nil {
-				heartbeat<-struct{}{}
+				heartbeat <- struct{}{}
 			}
 		}
 	}
 }
-

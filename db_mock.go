@@ -5,8 +5,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 	"os"
+	"time"
 )
 
 //DB describes a low level sqlite3 database implementation
@@ -16,7 +16,7 @@ func (db DB) conn() {
 	f, err := os.Create(db.String())
 	defer f.Close()
 	if err != nil {
-		log.Println("Failed to create db file " + db.String(), err)
+		log.Println("Failed to create db file "+db.String(), err)
 	}
 }
 
@@ -33,11 +33,11 @@ func (db *DB) PutTransaction(t Txn) error {
 
 //GetTransactions returns a slice of Txns within the given time range.
 //Ignores Summary transactions
-func (db *DB) GetTransactions(t1 Timestamp, t2 Timestamp) ([]Txn, error) {
+func (db *DB) GetTransactions(t1 time.Time, t2 time.Time) ([]Txn, error) {
 	log.Println(fmt.Sprintf("MockDb: GetTxns: tx1: %v, tx2: %v", t1, t2))
 	return []Txn{
 		Txn{
-			t1,
+			Timestamp(t1),
 			USD(1000),
 			[]string{"mock_db"},
 			"mock_db GetTxn",
@@ -45,7 +45,7 @@ func (db *DB) GetTransactions(t1 Timestamp, t2 Timestamp) ([]Txn, error) {
 			false,
 		},
 		Txn{
-			t2,
+			Timestamp(t2),
 			USD(-2000),
 			[]string{"mock_db"},
 			"mock_db GetTxn",
@@ -55,11 +55,11 @@ func (db *DB) GetTransactions(t1 Timestamp, t2 Timestamp) ([]Txn, error) {
 	}, nil
 }
 
-func (db *DB) GetTransactionsSince(t Timestamp) ([]Txn, error) {
+func (db *DB) GetTransactionsSince(t time.Time) ([]Txn, error) {
 	log.Println("MockDb: GetTxnsSince: tx1:", t)
 	return []Txn{
 		Txn{
-			 Timestamp{t.Add(1 * time.Hour)},
+			Timestamp(t.Add(1 * time.Hour)),
 			USD(1000),
 			[]string{"mock_db"},
 			"mock_db GetTxn",
@@ -67,7 +67,7 @@ func (db *DB) GetTransactionsSince(t Timestamp) ([]Txn, error) {
 			false,
 		},
 		Txn{
-			t,
+			Timestamp(t),
 			USD(-2000),
 			[]string{"mock_db"},
 			"mock_db GetTxn",
@@ -78,14 +78,14 @@ func (db *DB) GetTransactionsSince(t Timestamp) ([]Txn, error) {
 }
 
 //GetBalance returns the sum of transaction amounts since a given time.
-func (db DB) GetBalance(t Timestamp) (USD, error) {
+func (db DB) GetBalance(t time.Time) (USD, error) {
 	log.Println("MockDb: GetBalance:", t)
 	return USD(300), nil
 }
 
 //GetBalance returns the sum of transaction amounts grouped by username between two timestamps
-func (db DB) GetTagBalance(tag string, t1 Timestamp, t2 Timestamp) (*TagBalance, error){
-	log.Printf("MockDb: GetTagBalance: tag:%s, t1-%v, t2-%v",tag, t1, t2)
+func (db DB) GetTagBalance(tag string, t1 time.Time, t2 time.Time) (*TagBalance, error) {
+	log.Printf("MockDb: GetTagBalance: tag:%s, t1-%v, t2-%v", tag, t1, t2)
 	tb := NewTagBalance(tag)
 	tb.Add("user1", 100)
 	tb.Add("user2", 200)
@@ -101,4 +101,3 @@ func (db DB) GetTags() ([]string, error) {
 		"tag3",
 	}, nil
 }
-

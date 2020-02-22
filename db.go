@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bvinc/go-sqlite-lite/sqlite3"
+	"time"
 )
 
 const date string = `json_extract(txs.tx, '$.Date')`
@@ -84,7 +85,7 @@ func (db *DB) PutTransaction(t Txn) error {
 
 //GetTransactions returns a slice of Txns within the given time range.
 //Ignores Summary transactions
-func (db *DB) GetTransactions(t1 Timestamp, t2 Timestamp) ([]Txn, error) {
+func (db *DB) GetTransactions(t1 time.Time, t2 time.Time) ([]Txn, error) {
 
 	sql := `SELECT tx FROM txs
 WHERE %s AND NOT json_extract(txs.tx, '$.Summary')`
@@ -104,7 +105,7 @@ WHERE %s AND NOT json_extract(txs.tx, '$.Summary')`
 	return txRowsToSlice(stmt)
 }
 
-func (db *DB) GetTransactionsSince(t Timestamp) ([]Txn, error) {
+func (db *DB) GetTransactionsSince(t time.Time) ([]Txn, error) {
 
 	sql := `SELECT tx FROM txs
 WHERE %s >= (?) AND NOT json_extract(txs.tx, '$.Summary')`
@@ -125,7 +126,7 @@ WHERE %s >= (?) AND NOT json_extract(txs.tx, '$.Summary')`
 }
 
 //GetBalance returns the sum of transaction amounts since a given time.
-func (db DB) GetBalance(t Timestamp) (USD, error) {
+func (db DB) GetBalance(t time.Time) (USD, error) {
 	sql := `SELECT SUM(json_extract(txs.tx, '$.Amount')) AS amt FROM txs WHERE %s >= (?)`
 
 	conn, err := db.conn()
@@ -154,7 +155,7 @@ func (db DB) GetBalance(t Timestamp) (USD, error) {
 }
 
 //GetBalance returns the sum of transaction amounts grouped by username between two timestamps
-func (db DB) GetTagBalance(tag string, t1 Timestamp, t2 Timestamp) (*TagBalance, error){
+func (db DB) GetTagBalance(tag string, t1 time.Time, t2 time.Time) (*TagBalance, error) {
 	sql := `Select json_extract(txs.tx, '$.User'), SUM(json_extract(txs.tx, '$.Amount')) as amt 
 From txs, json_each(json_extract(txs.tx, '$.Tags'))
 WHERE %s AND json_each.value = (?)
