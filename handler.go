@@ -30,8 +30,6 @@ func (c *command) PatternMatches(cmd string) bool {
 
 type cmdMap map[string]command
 
-var cmds cmdMap
-
 func (m cmdMap) add(entryPoint func(cmd []string, msg chat1.MsgSummary) error, pattern ...string) {
 	cmd := new(command)
 	cmd.Name = pattern[0]
@@ -41,29 +39,10 @@ func (m cmdMap) add(entryPoint func(cmd []string, msg chat1.MsgSummary) error, p
 	m[cmd.Name] = *cmd
 }
 
-func commandExists(cmdName string) *command {
-	cmd := cmds[cmdName]
-	if len(cmd.Name) > 0 {
-		return &cmd
-	}
-	return nil
-}
-
 type Handler struct {
 	*Output
 	db   *DB
-	cmds *cmdMap
-}
-
-func (h *Handler) buildCommandMap() *cmdMap {
-	cmds = make(cmdMap)
-	cmds.add(h.HandleStart, "start", MONEY, "?")
-	cmds.add(h.HandleSpent, "spent", MONEY, "on", WORD)
-	cmds.add(h.HandleReceived, "received", MONEY, "from", WORD)
-	cmds.add(h.HandleBalance, "balance")
-	cmds.add(h.HandleListTags, "list", WORD)
-	cmds.add(h.HandleHowMuch, "howmuch", SPACE, "on|from", WORD)
-	return &cmds
+	cmds cmdMap
 }
 
 func NewHandler(kbc *kbchat.API, db *DB, ErrConvID string) Handler {
@@ -71,8 +50,23 @@ func NewHandler(kbc *kbchat.API, db *DB, ErrConvID string) Handler {
 		Output: NewDebugOutput("handler", kbc, ErrConvID),
 		db:     db,
 	}
-	h.cmds = h.buildCommandMap()
+	cmds := make(cmdMap)
+	cmds.add(h.HandleStart, "start", MONEY, "?")
+	cmds.add(h.HandleSpent, "spent", MONEY, "on", WORD)
+	cmds.add(h.HandleReceived, "received", MONEY, "from", WORD)
+	cmds.add(h.HandleBalance, "balance")
+	cmds.add(h.HandleListTags, "list", WORD)
+	cmds.add(h.HandleHowMuch, "howmuch", SPACE, "on|from", WORD)
+	h.cmds = cmds
 	return h
+}
+
+func (h *Handler) commandExists(cmdName string) *command {
+	cmd := h.cmds[cmdName]
+	if len(cmd.Name) > 0 {
+		return &cmd
+	}
+	return nil
 }
 
 func (h *Handler) HandleReceived(cmd []string, msg chat1.MsgSummary) error {
@@ -235,7 +229,7 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 	parts := strings.Split(cmdstring, " ")
 	name := parts[0]
 	//if first word is a command trigger word
-	if cmd := commandExists(name); cmd != nil {
+	if cmd := h.commandExists(name); cmd != nil {
 		// check if required data was given
 		if cmd.PatternMatches(cmdstring) {
 			//execute command

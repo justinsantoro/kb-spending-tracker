@@ -4,18 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/keybase/go-keybase-chat-bot/kbchat"
-	"github.com/keybase/go-keybase-chat-bot/kbchat/types/chat1"
 	"golang.org/x/sync/errgroup"
 	"os"
 	"sync"
 	"time"
 )
-
-type CmdHandler interface {
-	HandleCommand(chat1.MsgSummary) error
-	HandleNewConv(chat1.ConvSummary) error
-	BuildCommandMap()
-}
 
 type Server struct {
 	*Output
