@@ -109,9 +109,9 @@ func (t *Txn) Json() (string, error) {
 
 func ActionString(amt USD) string {
 	if amt < 0 {
-		return fmt.Sprintf("spent %s on", amt.Abs())
+		return "spent " + amt.Abs().String() + " on"
 	}
-	return fmt.Sprintf("received %s from", amt.Abs())
+	return "received " + amt.Abs().String() + " from"
 }
 
 type TagBalance struct {
@@ -137,7 +137,7 @@ func (tb TagBalance) String() string {
 	str := fmt.Sprintln(ActionString(tb.total), tb.tag)
 	for usr, bal := range tb.usrs {
 		percent := bal.InDollars() / tb.total.InDollars() * 100
-		str += fmt.Sprintln(fmt.Sprintf("   %s: %s (%.1f%%)", usr, bal.Abs(), percent))
+		str += ">@"+ usr + ": " + bal.Abs().String() + fmt.Sprintf(" (%.1f", percent) + "%%)\n"
 	}
 	return str
 }

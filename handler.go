@@ -166,7 +166,7 @@ func (h *Handler) HandleListTags(cmd []string, msg chat1.MsgSummary) error {
 			return err
 		}
 		var ts string
-		for t := range tags {
+		for _, t := range tags {
 			ts += fmt.Sprintln(t)
 		}
 		h.ReactSuccess(msg)
