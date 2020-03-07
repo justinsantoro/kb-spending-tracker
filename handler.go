@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -10,13 +11,17 @@ import (
 	"github.com/keybase/go-keybase-chat-bot/kbchat/types/chat1"
 )
 
-//MONEY is the RegEx string for a space followed by currency decimal followed by another space.
-const MONEY = `\s\d*\.?\d{2}\s`
-
-//WORD is a space followed by a word
-const WORD = `\s\w+`
-
-const SPACE = `\s`
+const(
+	//SPACE is a whitespace
+	SPACE = `\s`
+	//WORD is a space followed by a word
+	WORD = `\s\w+`
+	//MONEY is a currency decimal ie 100.00
+	MONEY = SPACE + `\d*\.?\d{2}` + SPACE
+	//Tags matches either a single tag or a comma-space separated list of tags
+	//ie: tag1, tag2, tag3
+	TAGS = SPACE + `((\w+,\s)*)?\w+`
+)
 
 type command struct {
 	Name       string
@@ -52,8 +57,8 @@ func NewHandler(kbc *kbchat.API, db *DB, ErrConvID string) Handler {
 	}
 	cmds := make(cmdMap)
 	cmds.add(h.HandleStart, "start", MONEY, "?")
-	cmds.add(h.HandleSpent, "spent", MONEY, "on", WORD)
-	cmds.add(h.HandleReceived, "received", MONEY, "from", WORD)
+	cmds.add(h.HandleSpent, "spent", MONEY, "on", TAGS)
+	cmds.add(h.HandleReceived, "received", MONEY, "from", TAGS)
 	cmds.add(h.HandleBalance, "balance")
 	cmds.add(h.HandleListTags, "list", WORD)
 	cmds.add(h.HandleHowMuch, "howmuch", SPACE, "on|from", WORD)
@@ -72,19 +77,21 @@ func (h *Handler) commandExists(cmdName string) *command {
 func (h *Handler) HandleReceived(cmd []string, msg chat1.MsgSummary) error {
 	ts := TimestampNow()
 	amt, err := StringToUSD(cmd[1])
-	var note string
+
 	if err != nil {
 		h.ReactError(msg)
 		h.ReactDollar(msg)
 		return err
 	}
-	if len(cmd) > 4 {
-		note = strings.Join(cmd[4:], " ")
+	tags, note := parseTagsAndNote(cmd[3:])
+	if tags == nil {
+		h.ReactQuestion(msg)
+		return errors.New("HandleReceived: couldn't parse tag(s)")
 	}
 	txn := Txn{
 		ts,
 		amt,
-		[]string{cmd[3]},
+		tags,
 		note,
 		msg.Sender.Username,
 		false,
@@ -124,19 +131,21 @@ func (h *Handler) HandleStart(cmd []string, msg chat1.MsgSummary) error {
 func (h *Handler) HandleSpent(cmd []string, msg chat1.MsgSummary) error {
 	ts := TimestampNow()
 	amt, err := StringToUSD(cmd[1])
-	var note string
+
 	if err != nil {
 		h.ReactError(msg)
 		h.ReactDollar(msg)
 		return err
 	}
-	if len(cmd) > 4 {
-		note = strings.Join(cmd[4:], " ")
+	tags, note := parseTagsAndNote(cmd[3:])
+	if tags == nil {
+		h.ReactQuestion(msg)
+		return errors.New("HandleSpent: couldn't parse tag(s)")
 	}
 	txn := Txn{
 		ts,
 		-amt,
-		[]string{cmd[3]},
+		tags,
 		note,
 		msg.Sender.Username,
 		false,
@@ -146,7 +155,6 @@ func (h *Handler) HandleSpent(cmd []string, msg chat1.MsgSummary) error {
 		return err
 	}
 	h.ReactSuccess(msg)
-	h.Notify(txn)
 	return nil
 }
 
@@ -241,4 +249,33 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 		return nil
 	}
 	return nil
+}
+
+func parseTagsAndNote(s []string) ([]string, string) {
+	var note string
+	tags, ntags := parseTagInput(s)
+	if ntags < len(s) {
+		note = strings.Join(s[ntags:], " ")
+	}
+	return tags, note
+}
+
+func parseTagInput(tags []string) ([]string, int) {
+	l := len(tags)
+	switch l {
+	case 0:
+		return nil, -1
+	case 1:
+		return []string{tags[0]}, 1
+	default:
+		tagList := make([]string, 0)
+		for i, val := range tags {
+			tagList = append(tagList, val[:len(val)-1])
+			if !strings.HasSuffix(val, ",") {
+				tagList[len(tagList)-1] = val
+				return tagList, i + 1
+			}
+		}
+		return nil, -2
+	}
 }
