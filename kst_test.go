@@ -11,13 +11,7 @@ import (
 func TestDb(t *testing.T) {
 	db := DB("test.db")
 
-	conn, err := db.conn()
-	if err != nil {
-		t.Error(err)
-	}
-	handleClose(conn)
-
-	if err = db.Init(); err != nil {
+	if err := db.Init(); err != nil {
 		t.Error(err)
 	}
 
@@ -143,9 +137,6 @@ func TestAuthorizedUsers(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	x := m.Run()
-	err := os.Remove("test.db")
-	if err != nil {
-		fmt.Print(err)
-	}
+	_ = os.Remove("test.db")
 	os.Exit(x)
 }

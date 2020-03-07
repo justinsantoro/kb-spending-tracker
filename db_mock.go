@@ -9,8 +9,16 @@ import (
 	"time"
 )
 
+type closer interface {
+	Close() error
+}
+
 //DB describes a low level sqlite3 database implementation
 type DB string
+
+func handleClose(c closer) {
+	fmt.Print("mockdb: handle close")
+}
 
 func (db DB) conn() {
 	f, err := os.Create(db.String())
@@ -18,6 +26,12 @@ func (db DB) conn() {
 	if err != nil {
 		log.Println("Failed to create db file "+db.String(), err)
 	}
+}
+
+func (db DB) Init() error {
+	log.Println("mockdb: initialize")
+	db.conn()
+	return nil
 }
 
 //String casts db as a string
