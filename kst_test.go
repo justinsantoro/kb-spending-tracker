@@ -15,9 +15,9 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	defer handleClose(conn)
+	handleClose(conn)
 
-	if err := conn.Exec(`CREATE TABLE txs(tx JSON)`); err != nil {
+	if err = db.Init(); err != nil {
 		t.Error(err)
 	}
 

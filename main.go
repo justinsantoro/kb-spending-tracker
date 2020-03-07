@@ -25,6 +25,11 @@ func main() {
 	}
 
 	db := DB(dbloc)
+	err = db.Init()
+	if err != nil {
+		panic(err)
+	}
+
 	h := NewHandler(kbc, &db, errConvID)
 	err = s.Listen(h)
 	if err != nil {

@@ -2,7 +2,7 @@ FROM golang:stretch As builder
 
 RUN go get github.com/justinsantoro/kb-spending-tracker
 
-FROM keybaseio/client
+FROM keybaseio/client:slim-nightly
 
 ENV KEYBASE_SERVICE=1
 ENV KST_KBHOME /home/keybase

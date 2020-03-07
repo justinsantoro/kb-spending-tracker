@@ -64,6 +64,18 @@ func (db DB) String() string {
 	return string(db)
 }
 
+func (db DB) Init() error {
+	conn, err := db.conn()
+	if err != nil {
+		return err
+	}
+	defer handleClose(conn)
+	if err = conn.Exec(`CREATE TABLE IF NOT EXISTS txs(tx JSON)`); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *DB) PutTransaction(t Txn) error {
 	conn, err := db.conn()
 	if err != nil {
