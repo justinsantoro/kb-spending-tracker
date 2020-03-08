@@ -237,7 +237,7 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 	parts := strings.Split(cmdstring, " ")
 	name := parts[0]
 	//if first word is a command trigger word
-	if cmd := h.commandExists(name); cmd != nil {
+	if cmd := h.commandExists(strings.ToLower(name)); cmd != nil {
 		// check if required data was given
 		if cmd.PatternMatches(cmdstring) {
 			//execute command
