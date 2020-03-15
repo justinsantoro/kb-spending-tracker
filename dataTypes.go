@@ -114,32 +114,56 @@ func ActionString(amt USD) string {
 	return "received " + amt.Abs().String() + " from"
 }
 
-type TagBalance struct {
+type groupedBalance interface {
+	Add(string, USD)
+	String() string
+}
+
+type BalanceByUsers struct {
 	usrs  map[string]USD
 	total USD
-	tag   string
+}
+
+func (ub *BalanceByUsers) Add(usr string, bal USD) {
+	ub.usrs[usr] = bal
+	ub.total += bal
+}
+
+func (ub *BalanceByUsers) breakdownString() string {
+	var str string
+	for usr, bal := range ub.usrs {
+		percent := bal.InDollars() / ub.total.InDollars() * 100
+		str += ">@" + usr + ": " + bal.Abs().String() + fmt.Sprintf(" (%.1f", percent) + "%%)\n"
+	}
+	return str
+}
+
+func (ub *BalanceByUsers) String() string {
+	return "**" + ub.total.String() + "**\n" + ub.breakdownString()
+}
+
+func NewUsersBalance() *BalanceByUsers {
+	return &BalanceByUsers{
+		make(map[string]USD),
+		USD(0),
+	}
+}
+
+type TagBalance struct {
+	*BalanceByUsers
+	tag string
 }
 
 func NewTagBalance(tag string) *TagBalance {
-	return &TagBalance{
-		make(map[string]USD),
-		USD(0),
-		tag,
-	}
+	tb := new(TagBalance)
+	tb.usrs = make(map[string]USD)
+	tb.total = USD(0)
+	tb.tag = tag
+	return tb
 }
 
-func (tb *TagBalance) Add(usr string, bal USD) {
-	tb.usrs[usr] = bal
-	tb.total += bal
-}
-
-func (tb TagBalance) String() string {
-	str := fmt.Sprintln(ActionString(tb.total), tb.tag)
-	for usr, bal := range tb.usrs {
-		percent := bal.InDollars() / tb.total.InDollars() * 100
-		str += ">@"+ usr + ": " + bal.Abs().String() + fmt.Sprintf(" (%.1f", percent) + "%%)\n"
-	}
-	return str
+func (tb *TagBalance) String() string {
+	return fmt.Sprintln(ActionString(tb.total), tb.tag) + tb.breakdownString()
 }
 
 type AuthorizedUsers map[string]struct{}
