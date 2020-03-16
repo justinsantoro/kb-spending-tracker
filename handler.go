@@ -96,7 +96,7 @@ func (h *Handler) HandleReceived(cmd []string, msg chat1.MsgSummary) error {
 		msg.Sender.Username,
 		false,
 	}
-	if err := h.db.PutTransaction(txn); err != nil {
+	if err := h.db.PutTxn(txn, nil); err != nil {
 		h.ReactError(msg)
 		return err
 	}
@@ -120,7 +120,7 @@ func (h *Handler) HandleStart(cmd []string, msg chat1.MsgSummary) error {
 		msg.Sender.Username,
 		true,
 	}
-	err = h.db.PutTransaction(txn)
+	err = h.db.PutTxn(txn, nil)
 	if err != nil {
 		h.ReactError(msg)
 	}
@@ -150,7 +150,7 @@ func (h *Handler) HandleSpent(cmd []string, msg chat1.MsgSummary) error {
 		msg.Sender.Username,
 		false,
 	}
-	if err := h.db.PutTransaction(txn); err != nil {
+	if err := h.db.PutTxn(txn, nil); err != nil {
 		h.ReactError(msg)
 		return err
 	}
@@ -204,23 +204,23 @@ func (h *Handler) HandleHowMuch(cmd []string, msg chat1.MsgSummary) error {
 }
 
 func (h *Handler) HandleMonthSummary(m time.Month) error {
-	bal, err := h.db.GetBalance(MonthStart(m))
+	bals, err := h.db.GetBalanceByUsersSince(MonthStart(m))
 	if err != nil {
 		return err
 	}
-	txn := Txn{
-		TimestampNow(),
-		bal,
-		[]string{},
-		"summary txn",
-		"Server",
-		true,
+	txns := make([]Txn, 0)
+	for usr, bal := range bals.usrs {
+		txns = append(txns,
+			Txn{
+			TimestampNow(),
+			bal,
+			[]string{},
+			"summary txn",
+			usr,
+			true,
+		})
 	}
-	err = h.db.PutTransaction(txn)
-	if err != nil {
-		return err
-	}
-	return nil
+	return h.db.PutMultipleTxnsSafely(txns)
 }
 
 func (h *Handler) HandleNewConv(conv chat1.ConvSummary) error {
