@@ -76,12 +76,34 @@ func (db DB) Init() error {
 	return nil
 }
 
-func (db *DB) PutTransaction(t Txn) error {
+//PutMultipleTxnsSafely puts inserts multiple txns within a db transaction,
+//Rolling back on an error
+func (db *DB) PutMultipleTxnsSafely(txns []Txn) error {
 	conn, err := db.conn()
 	if err != nil {
 		return err
 	}
 	defer handleClose(conn)
+
+	return conn.WithTx(func() error {
+		for _, txn := range txns {
+			err = db.PutTxn(txn, conn)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (db *DB) PutTxn(t Txn, conn *sqlite3.Conn) error {
+	if conn == nil {
+		conn, err := db.conn()
+		if err != nil {
+			return err
+		}
+		defer handleClose(conn)
+	}
 
 	tjson, err := t.Json()
 	if err != nil {
@@ -166,6 +188,42 @@ func (db DB) GetBalance(t time.Time) (USD, error) {
 	return USD(amt), nil
 }
 
+//GetBalanceByUsersSince is a convenience function which returns a BalanceByUsers
+//calculated between the given time and now
+func (db DB) GetBalanceByUsersSince(t1 time.Time) (*BalanceByUsers, error) {
+	return db.GetBalanceByUsers(t1, time.Now())
+}
+
+
+func (db DB) GetBalanceByUsers(t1 time.Time, t2 time.Time) (*BalanceByUsers, error) {
+	sql := `Select json_extract(txs.tx, '$.User'), SUM(json_extract(txs.tx, '$.Amount')) as amt 
+From txs
+WHERE %s
+GROUP BY json_extract(txs.tx, '$.User')
+ORDER BY amt`
+
+	conn, err := db.conn()
+	if err != nil {
+		return nil, err
+	}
+	defer handleClose(conn)
+
+	stmt, err := conn.Prepare(fmt.Sprintf(sql, betweenTimes()), t1.UnixNano(), t2.UnixNano())
+	if err != nil {
+		return nil, err
+	}
+	defer handleClose(stmt)
+
+	ub := NewUsersBalance()
+	err = buildGroupedBalFromStmt(stmt, ub)
+	if err != nil {
+		return nil, err
+	}
+
+	return ub, nil
+}
+
+
 //GetBalance returns the sum of transaction amounts grouped by username between two timestamps
 func (db DB) GetTagBalance(tag string, t1 time.Time, t2 time.Time) (*TagBalance, error) {
 	sql := `Select json_extract(txs.tx, '$.User'), SUM(json_extract(txs.tx, '$.Amount')) as amt 
@@ -187,25 +245,9 @@ ORDER BY amt`
 	defer handleClose(stmt)
 
 	tb := NewTagBalance(tag)
-	for {
-		hasRow, err := stmt.Step()
-		if err != nil {
-			return nil, err
-		}
-		if !hasRow {
-			break
-		}
-
-		var (
-			usr string
-			bal int64
-		)
-		err = stmt.Scan(&usr, &bal)
-		if err != nil {
-			return nil, err
-		}
-
-		tb.Add(usr, USD(bal))
+	err = buildGroupedBalFromStmt(stmt, tb)
+	if err != nil {
+		return nil, err
 	}
 	return tb, nil
 }
@@ -241,4 +283,27 @@ func (db DB) GetTags() ([]string, error) {
 		tags = append(tags, tag)
 	}
 	return tags, nil
+}
+
+func buildGroupedBalFromStmt(stmt *sqlite3.Stmt, balance groupedBalance) error {
+	for {
+		hasRow, err := stmt.Step()
+		if err != nil {
+			return err
+		}
+		if !hasRow {
+			break
+		}
+
+		var (
+			usr string
+			bal int64
+		)
+		err = stmt.Scan(&usr, &bal)
+		if err != nil {
+			return err
+		}
+		balance.Add(usr, USD(bal))
+	}
+	return nil
 }
