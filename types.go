@@ -137,7 +137,7 @@ func (tb TagBalance) String() string {
 	str := fmt.Sprintln(ActionString(tb.total), tb.tag)
 	for usr, bal := range tb.usrs {
 		percent := bal.InDollars() / tb.total.InDollars() * 100
-		str += ">@"+ usr + ": " + bal.Abs().String() + fmt.Sprintf(" (%.1f", percent) + "%%)\n"
+		str += ">@" + usr + ": " + bal.Abs().String() + fmt.Sprintf(" (%.1f", percent) + "%%)\n"
 	}
 	return str
 }

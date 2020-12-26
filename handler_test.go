@@ -1,6 +1,6 @@
 package main
 
-import(
+import (
 	"fmt"
 	"testing"
 )
@@ -34,7 +34,7 @@ func TestMultiTagParsing(t *testing.T) {
 	if len(tags) != 3 {
 		t.Error("unexpected tag length:", len(tags), "expected: 3")
 	}
-	for i, tag := range tags{
+	for i, tag := range tags {
 		if tag != fmt.Sprintf("tag%v", i+1) {
 			t.Error("error parsing tags: unexpected value: ", tag)
 			break
@@ -49,7 +49,7 @@ func TestMultiTagParsing(t *testing.T) {
 	if len(tags) != 3 {
 		t.Error("ParseMultiTagAndNote: unexpected tag length:", len(tags), "expected: 3")
 	}
-	for i, tag := range tags{
+	for i, tag := range tags {
 		if tag != fmt.Sprintf("tag%v", i+1) {
 			t.Error("ParseMultiTagAndNote: error parsing tags: unexpected value: ", tag)
 			break

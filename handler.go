@@ -11,7 +11,7 @@ import (
 	"github.com/keybase/go-keybase-chat-bot/kbchat/types/chat1"
 )
 
-const(
+const (
 	//SPACE is a whitespace
 	SPACE = `\s`
 	//WORD is a space followed by a word
