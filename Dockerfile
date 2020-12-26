@@ -1,14 +1,10 @@
-FROM golang:stretch As builder
-
-RUN go get github.com/justinsantoro/kb-spending-tracker
-
-FROM keybaseio/client:nightly-slim
+FROM keybaseio/client:stable-slim
 
 ENV KEYBASE_SERVICE=1
 ENV KST_KBHOME /home/keybase
 ENV KST_KBLOC /usr/bin/keybase
 
-COPY --from=builder /go/bin/kb-spending-tracker /home/keybase/kb-spending-tracker
+COPY kb-spending-tracker /home/keybase/kb-spending-tracker
 
 #run the bot
 CMD ["/home/keybase/kb-spending-tracker"]
