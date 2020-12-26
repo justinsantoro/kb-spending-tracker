@@ -78,6 +78,14 @@ func (m *USD) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+type TxnKey struct {
+	table     byte     //table identifier prefix
+	month     [6]byte  //month identifier yyyymm
+	tag       [32]byte //transaction type tag ie utils:electricity
+	timestamp int64    //transaction timestamp
+	user      byte     //user identifier
+}
+
 //Txn represents a single transaction
 type Txn struct {
 	Date    Timestamp //the unix timestamp of the transaction
