@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -84,17 +83,12 @@ func (h *Handler) HandleReceived(cmd []string, msg chat1.MsgSummary) error {
 		return err
 	}
 	tags, note := parseTagsAndNote(cmd[3:])
-	if tags == nil {
-		h.ReactQuestion(msg)
-		return errors.New("HandleReceived: couldn't parse tag(s)")
-	}
 	txn := Txn{
 		ts,
 		amt,
 		tags,
 		note,
 		msg.Sender.Username,
-		false,
 	}
 	if err := h.db.PutTransaction(txn); err != nil {
 		h.ReactError(msg)
@@ -115,10 +109,9 @@ func (h *Handler) HandleStart(cmd []string, msg chat1.MsgSummary) error {
 	txn := Txn{
 		ts,
 		amt,
-		[]string{},
+		"start",
 		"Starting transaction",
 		msg.Sender.Username,
-		true,
 	}
 	err = h.db.PutTransaction(txn)
 	if err != nil {
@@ -137,18 +130,13 @@ func (h *Handler) HandleSpent(cmd []string, msg chat1.MsgSummary) error {
 		h.ReactDollar(msg)
 		return err
 	}
-	tags, note := parseTagsAndNote(cmd[3:])
-	if tags == nil {
-		h.ReactQuestion(msg)
-		return errors.New("HandleSpent: couldn't parse tag(s)")
-	}
+	tag, note := parseTagsAndNote(cmd[3:])
 	txn := Txn{
 		ts,
 		-amt,
-		tags,
+		tag,
 		note,
 		msg.Sender.Username,
-		false,
 	}
 	if err := h.db.PutTransaction(txn); err != nil {
 		h.ReactError(msg)
@@ -211,10 +199,9 @@ func (h *Handler) HandleMonthSummary(m time.Month) error {
 	txn := Txn{
 		TimestampNow(),
 		bal,
-		[]string{},
+		"sum",
 		"summary txn",
 		"Server",
-		true,
 	}
 	err = h.db.PutTransaction(txn)
 	if err != nil {
@@ -251,31 +238,12 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 	return nil
 }
 
-func parseTagsAndNote(s []string) ([]string, string) {
+func parseTagsAndNote(s []string) (string, string) {
 	var note string
-	tags, ntags := parseTagInput(s)
-	if ntags < len(s) {
-		note = strings.Join(s[ntags:], " ")
+	tag := s[0]
+	if len(s) < 1 {
+		note = strings.Join(s[1:], " ")
 	}
-	return tags, note
+	return tag, note
 }
 
-func parseTagInput(tags []string) ([]string, int) {
-	l := len(tags)
-	switch l {
-	case 0:
-		return nil, -1
-	case 1:
-		return []string{tags[0]}, 1
-	default:
-		tagList := make([]string, 0)
-		for i, val := range tags {
-			tagList = append(tagList, val[:len(val)-1])
-			if !strings.HasSuffix(val, ",") {
-				tagList[len(tagList)-1] = val
-				return tagList, i + 1
-			}
-		}
-		return nil, -2
-	}
-}

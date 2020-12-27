@@ -53,18 +53,16 @@ func (db *DB) GetTransactions(t1 time.Time, t2 time.Time) ([]Txn, error) {
 		Txn{
 			Timestamp(t1),
 			USD(1000),
-			[]string{"mock_db"},
+			"mock_db",
 			"mock_db GetTxn",
 			"mocker",
-			false,
 		},
 		Txn{
 			Timestamp(t2),
 			USD(-2000),
-			[]string{"mock_db"},
+			"mock_db",
 			"mock_db GetTxn",
 			"mocker",
-			false,
 		},
 	}, nil
 }
@@ -75,18 +73,16 @@ func (db *DB) GetTransactionsSince(t time.Time) ([]Txn, error) {
 		Txn{
 			Timestamp(t.Add(1 * time.Hour)),
 			USD(1000),
-			[]string{"mock_db"},
+			"mock_db",
 			"mock_db GetTxn",
 			"mocker",
-			false,
 		},
 		Txn{
 			Timestamp(t),
 			USD(-2000),
-			[]string{"mock_db"},
+			"mock_db",
 			"mock_db GetTxn",
 			"mocker",
-			false,
 		},
 	}, nil
 }

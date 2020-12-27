@@ -88,18 +88,16 @@ type TxnKey struct {
 
 //Txn represents a single transaction
 type Txn struct {
-	Date    Timestamp //the unix timestamp of the transaction
-	Amount  USD       //the amount of the transaction in cents
-	Tags    []string  //tags for the transaction
-	Note    string    //notes related to the transaction
-	User    string    //name of user who submitted the tx
-	Summary bool      //whether the transaction is a summary of the previous month's transactions
-
+	Date   Timestamp //the unix timestamp of the transaction
+	Amount USD       //the amount of the transaction in cents
+	Tag    string    //tags for the transaction
+	Note   string    //notes related to the transaction
+	User   string    //name of user who submitted the tx
 }
 
 //String returns the default string representation of a Txn
 func (t *Txn) String() string {
-	return fmt.Sprintf("%s %s %s on %s", t.User, t.Action(), t.Amount.Abs(), t.Tags[0])
+	return fmt.Sprintf("%s %s %s on %s", t.User, t.Action(), t.Amount.Abs(), t.Tag)
 }
 
 //Returns spent or received depending on whether the txn amnt is positive or negative
