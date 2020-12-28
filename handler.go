@@ -19,7 +19,7 @@ const (
 	MONEY = SPACE + `\d*\.?\d{2}` + SPACE
 	//Tags matches either a single tag or a comma-space separated list of tags
 	//ie: tag1, tag2, tag3
-	TAGS = SPACE + `((\w+,\s)*)?\w+`
+	TAGS = SPACE + `((\w+:)*)?\w+`
 )
 
 type command struct {
@@ -38,7 +38,7 @@ func (m cmdMap) add(entryPoint func(cmd []string, msg chat1.MsgSummary) error, p
 	cmd := new(command)
 	cmd.Name = pattern[0]
 	cmd.EntryPoint = entryPoint
-	expr := `(?is)^` + strings.Join(pattern, "") + `(:?\s|$)`
+	expr := `(?is)^` + strings.Join(pattern, "") + `(:?$)`
 	cmd.Pattern = regexp.MustCompile(expr)
 	m[cmd.Name] = *cmd
 }
