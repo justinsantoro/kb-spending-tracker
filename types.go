@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -117,6 +118,42 @@ func ActionString(amt USD) string {
 		return "spent " + amt.Abs().String() + " on"
 	}
 	return "received " + amt.Abs().String() + " from"
+}
+
+type Tags struct {
+	persister
+	Tagmap map[string]struct{}
+}
+
+func LoadTags() (*Tags, error) {
+	tags := new(Tags)
+	err := tags.Load(tags)
+	if tags.Tagmap == nil {
+		tags.Tagmap = make(map[string]struct{})
+	}
+	return tags, err
+}
+
+func (t *Tags) IsTag(tag string) bool {
+	_, ok := t.Tagmap[tag]
+	return ok
+}
+
+func (t *Tags) AddTag(tag string) error {
+	if !t.IsTag(tag) {
+		t.Tagmap[tag] = struct{}{}
+	}
+	return t.Persist(t)
+}
+
+//Tags returns a lexicographically sorted slice of tag strings
+func (t *Tags) Tags() []string {
+	tags := make([]string, len(t.Tagmap))
+	for key, _ := range t.Tagmap {
+		tags = append(tags, key)
+	}
+	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
+	return tags
 }
 
 type TagBalance struct {
