@@ -147,10 +147,22 @@ func (tb TagBalance) String() string {
 	return str
 }
 
+type persister interface {
+	Load(interface{}) error
+	Persist(interface{}) error
+}
+
 type Users struct {
+	persister
 	IdToUsername map[byte]string
 	UsernameToId map[string]byte
 	Admin        byte
+}
+
+func LoadUsers() (*Users, error) {
+	users := new(Users)
+	err := users.Load(users)
+	return users, err
 }
 
 func (u *Users) Count() int {
@@ -183,11 +195,11 @@ func (u *Users) AddUser(username string) error {
 	if len(username) > 15 || strings.Contains(username, " ") {
 		return errors.New(fmt.Sprint("Invalid authorized users string:", username))
 	}
-	//1 based
+	//1 based - 0 is reserved for server actions like summary txns
 	userid := byte(u.Count() + 1)
 	u.UsernameToId[username] = userid
 	u.IdToUsername[userid] = username
-	return nil
+	return u.Persist(u)
 }
 
 func (u *Users) IsAdmin(username string) bool {
