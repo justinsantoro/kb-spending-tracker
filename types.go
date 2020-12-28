@@ -147,21 +147,53 @@ func (tb TagBalance) String() string {
 	return str
 }
 
-type AuthorizedUsers map[string]struct{}
+type Users struct {
+	IdToUsername map[byte]string
+	UsernameToId map[string]byte
+	Admin        byte
+}
 
-//NewAutorizedUsers takes in a string of comma separated usernames
-func NewAuthorizedUsers(usrstr string) (AuthorizedUsers, error) {
-	users := strings.Split(usrstr, ",")
-	//do some basic validation...
-	if len(users) == 1 {
-		//keybase usernames cannot be more than 15 chars long or contain spaces
-		if len(users[0]) > 15 || strings.Contains(users[0], " ") {
-			return nil, errors.New(fmt.Sprint("Invalid authorized users string:", users[0]))
-		}
+func (u *Users) Count() int {
+	return len(u.UsernameToId)
+}
+
+func (u *Users) Username(id byte) string {
+	username, ok := u.IdToUsername[id]
+	if !ok {
+		return ""
 	}
-	usrmap := make(AuthorizedUsers)
-	for _, usr := range users {
-		usrmap[usr] = struct{}{}
+	return username
+}
+
+func (u *Users) Userid(username string) byte {
+	userid, ok := u.UsernameToId[username]
+	if !ok {
+		return 0
 	}
-	return usrmap, nil
+	return userid
+}
+
+func (u *Users) IsUser(username string) bool {
+	_, ok := u.UsernameToId[username]
+	return ok
+}
+
+func (u *Users) AddUser(username string) error {
+	//keybase usernames cannot be more than 15 chars long or contain spaces
+	if len(username) > 15 || strings.Contains(username, " ") {
+		return errors.New(fmt.Sprint("Invalid authorized users string:", username))
+	}
+	//1 based
+	userid := byte(u.Count() + 1)
+	u.UsernameToId[username] = userid
+	u.IdToUsername[userid] = username
+	return nil
+}
+
+func (u *Users) IsAdmin(username string) bool {
+	return u.IdToUsername[u.Admin] == username
+}
+
+func (u *Users) IsAdminId(id byte) bool {
+	return id == u.Admin
 }

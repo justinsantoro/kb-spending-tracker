@@ -15,16 +15,7 @@ type Server struct {
 	sync.Mutex
 	shutdownCh chan struct{}
 	kbc        *kbchat.API
-	Users      AuthorizedUsers
-}
-
-func (s *Server) SetUsers(users AuthorizedUsers) {
-	s.Users = users
-}
-
-func (s *Server) IsUser(username string) bool {
-	_, ok := s.Users[username]
-	return ok
+	users      *Users
 }
 
 func (s *Server) Start(keybaseLoc, home string, ErrorConvId string) (kbc *kbchat.API, err error) {
@@ -75,7 +66,7 @@ func (s *Server) listenForMsgs(shutdownCh chan struct{}, sub *kbchat.Subscriptio
 			continue
 		}
 		usr := m.Message.Sender.Username
-		if !s.IsUser(usr) {
+		if !s.users.IsUser(usr) {
 			if usr != os.Getenv("KEYBASE_USERNAME") {
 				s.Debug("Ignoring message from %s", usr)
 			}
@@ -105,7 +96,7 @@ func (s *Server) listenForConvs(shutdownCh chan struct{}, sub *kbchat.Subscripti
 			continue
 		}
 
-		if !s.IsUser(c.Conversation.CreatorInfo.Username) {
+		if !s.users.IsUser(c.Conversation.CreatorInfo.Username) {
 			s.Debug("Ignored new conversation created by %s", c.Conversation.CreatorInfo.Username)
 			return nil
 		}

@@ -10,13 +10,8 @@ func main() {
 	keybase := os.Getenv("KST_KBLOC")
 	dbloc := os.Getenv("KST_DBLOC")
 	errConvID := os.Getenv("KST_DBGCONV")
-	users, err := NewAuthorizedUsers(os.Getenv("KST_USERS"))
-	if err != nil {
-		panic(err)
-	}
 
 	s := new(Server)
-	s.SetUsers(users)
 
 	kbc, err := s.Start(keybase, homedir, errConvID)
 	if err != nil {
