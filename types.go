@@ -91,7 +91,6 @@ type Txn struct {
 	Date   Timestamp //the unix timestamp of the transaction
 	Amount USD       //the amount of the transaction in cents
 	Tag    string    //tags for the transaction
-	Note   string    //notes related to the transaction
 	User   string    //name of user who submitted the tx
 }
 

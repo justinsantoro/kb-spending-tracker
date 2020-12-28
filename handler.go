@@ -82,12 +82,10 @@ func (h *Handler) HandleReceived(cmd []string, msg chat1.MsgSummary) error {
 		h.ReactDollar(msg)
 		return err
 	}
-	tags, note := parseTagsAndNote(cmd[3:])
 	txn := Txn{
 		ts,
 		amt,
-		tags,
-		note,
+		cmd[3],
 		msg.Sender.Username,
 	}
 	if err := h.db.PutTransaction(txn); err != nil {
@@ -110,7 +108,6 @@ func (h *Handler) HandleStart(cmd []string, msg chat1.MsgSummary) error {
 		ts,
 		amt,
 		"start",
-		"Starting transaction",
 		msg.Sender.Username,
 	}
 	err = h.db.PutTransaction(txn)
@@ -130,12 +127,10 @@ func (h *Handler) HandleSpent(cmd []string, msg chat1.MsgSummary) error {
 		h.ReactDollar(msg)
 		return err
 	}
-	tag, note := parseTagsAndNote(cmd[3:])
 	txn := Txn{
 		ts,
 		-amt,
-		tag,
-		note,
+		cmd[3],
 		msg.Sender.Username,
 	}
 	if err := h.db.PutTransaction(txn); err != nil {
@@ -200,7 +195,6 @@ func (h *Handler) HandleMonthSummary(m time.Month) error {
 		TimestampNow(),
 		bal,
 		"sum",
-		"summary txn",
 		"Server",
 	}
 	err = h.db.PutTransaction(txn)
@@ -236,14 +230,5 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 		return nil
 	}
 	return nil
-}
-
-func parseTagsAndNote(s []string) (string, string) {
-	var note string
-	tag := s[0]
-	if len(s) < 1 {
-		note = strings.Join(s[1:], " ")
-	}
-	return tag, note
 }
 
