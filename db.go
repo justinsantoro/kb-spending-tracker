@@ -2,243 +2,153 @@
 
 package main
 
-import (
-	"encoding/json"
+import(
 	"fmt"
-	"github.com/bvinc/go-sqlite-lite/sqlite3"
+	badger "github.com/dgraph-io/badger/v2"
 	"time"
 )
 
-const date string = `json_extract(txs.tx, '$.Date')`
-
-type closer interface {
-	Close() error
+type db struct {
+	internal *badger.DB
 }
 
-//DB describes a low level sqlite3 database implementation
-type DB string
-
-func betweenTimes() string {
-	return fmt.Sprintf("%s >= (?) AND %s <= (?)", date, date)
+//OpenDb opens a badgerdb in dir returning
+//and wraps it in a db type
+func OpenDb(dir string) (d *db, err error) {
+	d = new(db)
+	d.internal, err = badger.Open(badger.DefaultOptions(dir))
+	return
 }
 
-func handleClose(c closer) {
-	err := c.Close()
-	if err != nil {
-		fmt.Print("error closing :", err)
-	}
+//Close closes the db
+func (db *db) Close() error {
+	return db.internal.Close()
 }
 
-func txRowsToSlice(stmt *sqlite3.Stmt) ([]Txn, error) {
-	var txs []Txn
-	for {
-		hasRow, err := stmt.Step()
+//IsClosed returns true if the underlying db is closed
+func (db *db) IsClosed() bool {
+	return db.internal.IsClosed()
+}
+
+//Get returns a copy of the value with the given key
+func (db *db) Get(key []byte) ([]byte, error) {
+	var v []byte
+	err := db.internal.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if !hasRow {
-			break
-		}
-
-		var tx string
-		err = stmt.Scan(&tx)
+		err = item.Value(func(val []byte) error {
+			v = append([]byte{}, val...)
+			return nil
+		})
 		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if err != badger.ErrKeyNotFound {
 			return nil, err
 		}
-
-		var t Txn
-		if err := json.Unmarshal([]byte(tx), &t); err != nil {
-			return nil, err
-		}
-		txs = append(txs, t)
+		return nil, nil
 	}
-	return txs, nil
+	return v, nil
 }
 
-func (db DB) conn() (*sqlite3.Conn, error) {
-	return sqlite3.Open(string(db))
-}
-
-//String casts db as a string
-func (db DB) String() string {
-	return string(db)
-}
-
-func (db DB) Init() error {
-	conn, err := db.conn()
-	if err != nil {
+//Sets the value at the given key
+func (db *db) Set(key []byte, value []byte) error {
+	return db.internal.Update(func(txn *badger.Txn) error {
+		err := txn.Set(key, value)
 		return err
-	}
-	defer handleClose(conn)
-	if err = conn.Exec(`CREATE TABLE IF NOT EXISTS txs(tx JSON)`); err != nil {
-		return err
-	}
-	return nil
+	})
 }
 
-func (db *DB) PutTransaction(t Txn) error {
-	conn, err := db.conn()
-	if err != nil {
-		return err
-	}
-	defer handleClose(conn)
-
-	tjson, err := t.Json()
-	if err != nil {
-		return err
-	}
-	stmt, err := conn.Prepare(`Insert INTO txs VALUES (?)`, tjson)
-	if err != nil {
-		return err
-	}
-	defer handleClose(stmt)
-	return stmt.Exec()
+//SetWithMetadata sets a value with a metadata byte
+func (db *db) SetWithMetadata(key []byte, value []byte, meta byte) error {
+	return db.internal.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry(key, value).WithMeta(meta)
+		return txn.SetEntry(e)
+	})
 }
 
-//GetTransactions returns a slice of Txns within the given time range.
-//Ignores Summary transactions
-func (db *DB) GetTransactions(t1 time.Time, t2 time.Time) ([]Txn, error) {
-
-	sql := `SELECT tx FROM txs
-WHERE %s AND NOT json_extract(txs.tx, '$.Summary')`
-
-	conn, err := db.conn()
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(conn)
-
-	stmt, err := conn.Prepare(fmt.Sprintf(sql, betweenTimes()), t1.UnixNano(), t2.UnixNano())
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(stmt)
-
-	return txRowsToSlice(stmt)
+//SetWithTTL sets a value with a Time To Live attribute
+func (db *db) SetWithTTL(key []byte, value []byte, ttl time.Duration) error {
+	return db.internal.Update(func(txn *badger.Txn) error {
+		e := badger.NewEntry(key, value).WithTTL(ttl)
+		return txn.SetEntry(e)
+	})
 }
 
-func (db *DB) GetTransactionsSince(t time.Time) ([]Txn, error) {
-
-	sql := `SELECT tx FROM txs
-WHERE %s >= (?) AND NOT json_extract(txs.tx, '$.Summary')`
-
-	conn, err := db.conn()
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(conn)
-
-	stmt, err := conn.Prepare(fmt.Sprintf(sql, date), t.UnixNano())
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(stmt)
-
-	return txRowsToSlice(stmt)
-}
-
-//GetBalance returns the sum of transaction amounts since a given time.
-func (db DB) GetBalance(t time.Time) (USD, error) {
-	sql := `SELECT SUM(json_extract(txs.tx, '$.Amount')) AS amt FROM txs WHERE %s >= (?)`
-
-	conn, err := db.conn()
-	if err != nil {
-		return -1, err
-	}
-	defer handleClose(conn)
-
-	stmt, err := conn.Prepare(fmt.Sprintf(sql, date), t.UnixNano())
-	if err != nil {
-		return -1, err
-	}
-	defer handleClose(stmt)
-
-	hasRow, err := stmt.Step()
-	if !hasRow {
-		return 0, nil
-	}
-
-	var amt int64
-	err = stmt.Scan(&amt)
-	if err != nil {
-		return -1, err
-	}
-	return USD(amt), nil
-}
-
-//GetBalance returns the sum of transaction amounts grouped by username between two timestamps
-func (db DB) GetTagBalance(tag string, t1 time.Time, t2 time.Time) (*TagBalance, error) {
-	sql := `Select json_extract(txs.tx, '$.User'), SUM(json_extract(txs.tx, '$.Amount')) as amt 
-From txs, json_each(json_extract(txs.tx, '$.Tags'))
-WHERE %s AND json_each.value = (?)
-GROUP BY json_extract(txs.tx, '$.User')
-ORDER BY amt`
-
-	conn, err := db.conn()
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(conn)
-
-	stmt, err := conn.Prepare(fmt.Sprintf(sql, betweenTimes()), t1.UnixNano(), t2.UnixNano(), tag)
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(stmt)
-
-	tb := NewTagBalance(tag)
-	for {
-		hasRow, err := stmt.Step()
-		if err != nil {
-			return nil, err
+//Iterate values iterates over keys mathing the giving prefix, running f func
+//on each value. f may return ErrBreakIter to break out of iteration early
+func (db *db) IterateValues(prefix []byte, f func(v []byte) error) error {
+	return db.internal.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			err := item.Value(f)
+			if err != nil {
+				if err != ErrBreakIter {
+					return err
+				}
+				break
+			}
 		}
-		if !hasRow {
-			break
-		}
-
-		var (
-			usr string
-			bal int64
-		)
-		err = stmt.Scan(&usr, &bal)
-		if err != nil {
-			return nil, err
-		}
-
-		tb.Add(usr, USD(bal))
-	}
-	return tb, nil
+		return nil
+	})
 }
 
-//GetTags returns a list of distinct tags
-func (db DB) GetTags() ([]string, error) {
-	sql := `SELECT DISTINCT json_each.value FROM txs, json_each(json_extract(txs.tx, '$.Tags'))`
-
-	conn, err := db.conn()
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(conn)
-
-	stmt, err := conn.Prepare(sql)
-	if err != nil {
-		return nil, err
-	}
-	defer handleClose(stmt)
-
-	var tags []string
-	for {
-		hasRow, err := stmt.Step()
-		if !hasRow {
-			break
+//IterateKeys iterates over keys only. The underlying iterator
+//does not prefetch any values. The value of each key is passed to f. Iteration can be stopped
+//early if f returns ErrBreakIter
+func (db *db) IterateKeys(prefix []byte, f func(k []byte) error) error {
+	return db.internal.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			err := f(it.Item().Key())
+			if err != nil {
+				if err != ErrBreakIter {
+					return err
+				}
+				break
+			}
 		}
+		return nil
+	})
+}
 
-		var tag string
-		err = stmt.Scan(&tag)
-		if err != nil {
-			return nil, err
+//SparseRead allows doing a sparse read of values. The underlying iterator does not prefect any values.
+//Each key is passed into kfunc. if kfunc returns true, nil than the value of the key will be passed
+//into vfunc. If either functions return ErrBreakIter than iteration will be stopped early.
+func (db *db) SparseRead(prefix []byte, kfunc func (k []byte) (bool, error), vfunc func(v []byte) error) error {
+	return db.internal.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			ok, err := kfunc(it.Item().Key())
+			if err != nil {
+				if err != ErrBreakIter {
+					return err
+				}
+				break
+			}
+			if ok {
+				err = it.Item().Value(vfunc)
+				if err != nil {
+					if err != ErrBreakIter {
+						return err
+					}
+					break
+				}
+			}
 		}
-		tags = append(tags, tag)
-	}
-	return tags, nil
+		return nil
+	})
 }
