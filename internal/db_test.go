@@ -9,7 +9,7 @@ import (
 func TestDb(t *testing.T) {
 	//delete old database if exists
 	dir := os.TempDir() + "/badgerdbtest"
-	err := os.RemoveAll(os.TempDir()+"/badgerdbtest")
+	err := os.RemoveAll(os.TempDir() + "/badgerdbtest")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestDb(t *testing.T) {
 
 	//test iterate values
 	for i := 0; i < 3; i++ {
-		err = db.Set([]byte{0,byte(i)}, []byte{byte(i)})
+		err = db.Set([]byte{0, byte(i)}, []byte{byte(i)})
 	}
 	//should iterate over all three values
 	i := 0

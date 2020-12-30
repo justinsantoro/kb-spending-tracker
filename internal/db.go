@@ -126,7 +126,7 @@ func (db *db) IterateKeys(prefix []byte, f func(k []byte) error) error {
 //SparseRead allows doing a sparse read of values. The underlying iterator does not prefect any values.
 //Each key is passed into kfunc. if kfunc returns true, nil than the value of the key will be passed
 //into vfunc. If either functions return ErrBreakIter than iteration will be stopped early.
-func (db *db) SparseRead(prefix []byte, kfunc func (k []byte) (bool, error), vfunc func(v []byte) error) error {
+func (db *db) SparseRead(prefix []byte, kfunc func(k []byte) (bool, error), vfunc func(v []byte) error) error {
 	return db.internal.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
