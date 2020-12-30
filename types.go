@@ -3,11 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"sort"
 	"strconv"
-	"strings"
 )
 
 func toJsonString(x interface{}) (string, error) {
@@ -120,42 +117,6 @@ func ActionString(amt USD) string {
 	return "received " + amt.Abs().String() + " from"
 }
 
-type Tags struct {
-	persister
-	Tagmap map[string]struct{}
-}
-
-func LoadTags() (*Tags, error) {
-	tags := new(Tags)
-	err := tags.Load(tags)
-	if tags.Tagmap == nil {
-		tags.Tagmap = make(map[string]struct{})
-	}
-	return tags, err
-}
-
-func (t *Tags) IsTag(tag string) bool {
-	_, ok := t.Tagmap[tag]
-	return ok
-}
-
-func (t *Tags) AddTag(tag string) error {
-	if !t.IsTag(tag) {
-		t.Tagmap[tag] = struct{}{}
-	}
-	return t.Persist(t)
-}
-
-//Tags returns a lexicographically sorted slice of tag strings
-func (t *Tags) Tags() []string {
-	tags := make([]string, len(t.Tagmap))
-	for key, _ := range t.Tagmap {
-		tags = append(tags, key)
-	}
-	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
-	return tags
-}
-
 type TagBalance struct {
 	usrs  map[string]USD
 	total USD
@@ -182,67 +143,4 @@ func (tb TagBalance) String() string {
 		str += ">@" + usr + ": " + bal.Abs().String() + fmt.Sprintf(" (%.1f", percent) + "%%)\n"
 	}
 	return str
-}
-
-type persister interface {
-	Load(interface{}) error
-	Persist(interface{}) error
-}
-
-type Users struct {
-	persister
-	IdToUsername map[byte]string
-	UsernameToId map[string]byte
-	Admin        byte
-}
-
-func LoadUsers() (*Users, error) {
-	users := new(Users)
-	err := users.Load(users)
-	return users, err
-}
-
-func (u *Users) Count() int {
-	return len(u.UsernameToId)
-}
-
-func (u *Users) Username(id byte) string {
-	username, ok := u.IdToUsername[id]
-	if !ok {
-		return ""
-	}
-	return username
-}
-
-func (u *Users) Userid(username string) byte {
-	userid, ok := u.UsernameToId[username]
-	if !ok {
-		return 0
-	}
-	return userid
-}
-
-func (u *Users) IsUser(username string) bool {
-	_, ok := u.UsernameToId[username]
-	return ok
-}
-
-func (u *Users) AddUser(username string) error {
-	//keybase usernames cannot be more than 15 chars long or contain spaces
-	if len(username) > 15 || strings.Contains(username, " ") {
-		return errors.New(fmt.Sprint("Invalid authorized users string:", username))
-	}
-	//1 based - 0 is reserved for server actions like summary txns
-	userid := byte(u.Count() + 1)
-	u.UsernameToId[username] = userid
-	u.IdToUsername[userid] = username
-	return u.Persist(u)
-}
-
-func (u *Users) IsAdmin(username string) bool {
-	return u.IdToUsername[u.Admin] == username
-}
-
-func (u *Users) IsAdminId(id byte) bool {
-	return id == u.Admin
 }
