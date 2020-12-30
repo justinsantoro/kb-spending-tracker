@@ -1,9 +1,8 @@
 // +build !nodb
 
-package main
+package internal
 
-import(
-	"fmt"
+import (
 	badger "github.com/dgraph-io/badger/v2"
 	"time"
 )
