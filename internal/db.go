@@ -15,7 +15,9 @@ type db struct {
 //and wraps it in a db type
 func OpenDb(dir string) (d *db, err error) {
 	d = new(db)
-	d.internal, err = badger.Open(badger.DefaultOptions(dir))
+	opts := badger.DefaultOptions(dir)
+	opts.Logger = nil
+	d.internal, err = badger.Open(opts)
 	return
 }
 
