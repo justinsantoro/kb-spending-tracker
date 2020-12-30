@@ -231,4 +231,3 @@ func (h *Handler) HandleCommand(msg chat1.MsgSummary) error {
 	}
 	return nil
 }
-
