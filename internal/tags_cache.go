@@ -3,6 +3,7 @@ package internal
 import "sort"
 
 const tagKey = "tags"
+const MaxTagLength = 32
 
 type TagsCache struct {
 	*cacheStore
