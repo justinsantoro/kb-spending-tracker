@@ -4,7 +4,7 @@ import "time"
 
 type TxnService struct {
 	store *txnStore
-	tags *TagsCache
+	tags  *TagsCache
 }
 
 const summaryTxnTag = "summary"
