@@ -152,6 +152,7 @@ type Txn struct {
 	Date   *time.Time //the unix timestamp of the transaction
 	Amount USD        //the amount of the transaction in cents
 	Tag    string     //tags for the transaction
+	Id     string     //txn unique id
 	User   byte       //id of user who submitted the tx
 }
 

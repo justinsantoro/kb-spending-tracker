@@ -17,6 +17,7 @@ func (txs *TxnService) AddTransaction(amount USD, tag string, date *time.Time, t
 		Date:   date,
 		Amount: amount,
 		Tag:    tag,
+		Id: txid,
 		User:   uid,
 	})
 	if err != nil {
